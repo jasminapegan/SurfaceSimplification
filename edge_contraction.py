@@ -46,14 +46,14 @@ def edge_contraction(graph,triangulation,points):
             triangulation.remove((a,b,y))
             for i,j,k in triangulation:
                 if (i==a or i==b):
-                    triangulation.remove(i,j,k)
-                    triangulation.append(c,j,k)
+                    triangulation.remove((i,j,k))
+                    triangulation.append((c,j,k))
                 if (j==a or j==b):
-                    triangulation.remove(i,j,k)
-                    triangulation.append(i,c,k)
+                    triangulation.remove((i,j,k))
+                    triangulation.append((i,c,k))
                 if (k==a or k==b):
-                    triangulation.remove(i,j,k)
-                    triangulation.append(i,j,c)
+                    triangulation.remove((i,j,k))
+                    triangulation.append((i,j,c))
 
         err, edge = edges_errors_pq.popitem()
 
