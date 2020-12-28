@@ -26,7 +26,7 @@ def edge_contraction(graph,triangulation,points):
             a, b = edge
             link_a=link_of_node(graph,a)
             link_b=link_of_node(graph,b)
-            c,x,y=contract(graph, edge)
+            c,x,y=contract(graph, edge,points)
 
             #update graph
             #by removing nodes we remove all incident edges as well
@@ -35,10 +35,10 @@ def edge_contraction(graph,triangulation,points):
             graph.add_node(c)
             for v in list(link_a):
                 if isinstance(v, int):
-                     graph.add_edge(v,c)
+                     graph.add_edge(v,c,points)
             for v in list(link_b):
                 if isinstance(v, int):
-                     graph.add_edge(v,c)
+                     graph.add_edge(v,c,points)
 
             # update triangulation by removing triangles a,b,x and a,b,y (could there be problem with order?)
             # and in all other triangles replace a and b with c
@@ -80,11 +80,9 @@ def contract(graph, edge,points):
 def initial_error(graph, triangulation, points):
     error = {}
 
-    error_points = [0 for _ in graph.nodes]
     for i in graph.nodes():
         error[(i,)] = 0
 
-    error_edges = [0 for _ in graph.edges]
     for e in graph.edges():
         error[e] = 0
 
@@ -106,11 +104,9 @@ def initial_error(graph, triangulation, points):
                 if x < y:
 
                     # Qab
-                    error_edges[graph.edges.index((x, y))] += error_triangles[i]
                     error[(x, y)] += error_triangles[i]
 
                     # Qa
-                    error_points[graph.nodes.index(x)] += 0  # todo
                     error[(x,)] += error[(x, y)]
                     error[(y,)] += error[(x, y)]
 
@@ -119,12 +115,12 @@ def initial_error(graph, triangulation, points):
     return error
 
 
-def deformation_error(graph, error, edge):
+def deformation_error(graph, error, edge, points):
     """ Score that measures how deformed the graph becomes by contracting the edge. """
     a, b = edge
 
     # get the new point and new edges from somewhere
-    c, x, y = contract(graph, edge)
+    c, x, y = contract(graph, edge, points)
 
     # avoid calculating twice
     if (c,) not in error.keys():

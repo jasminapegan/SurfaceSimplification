@@ -15,6 +15,7 @@ points, triangulation = read_data.get_triangulation(in_file)
 #helpers.plot(list(triangulation), points)
 
 graph = helpers.triangulation_to_graph(triangulation, points)
+edge_contraction.edge_contraction(graph, triangulation, points)
 
 
 
