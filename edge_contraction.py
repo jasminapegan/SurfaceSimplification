@@ -10,18 +10,71 @@
 """
 from helpers import triangle_normal
 import numpy as np
+from sortedcontainers import SortedDict
 
 
-def edge_contraction(graph, edge):
-    """ Edge contraction algorithm. """
-    pass
+def edge_contraction(graph,triangulation,points):
+    """ Edge contraction algorithm.
+     First calculate initial errors and sort edges according to the error in priority queue.
+     While priority queue is not empty, get edge with highest priority, update graph and update triangulation.  """
+    error=initial_error(graph,triangulation,points)
+    edges_errors_pq=sort_edges(graph,error)
+    err,edge=edges_errors_pq.popitem()
 
+    while edges_errors_pq:
+        if(is_safe(graph,edge)):
+            a, b = edge
+            link_a=link_of_node(graph,a)
+            link_b=link_of_node(graph,b)
+            c,x,y=contract(graph, edge)
 
-def contract(graph, edge):
+            #update graph
+            #by removing nodes we remove all incident edges as well
+            graph.remove_node(a)
+            graph.remove_node(b)
+            graph.add_node(c)
+            for v in list(link_a):
+                if isinstance(v, int):
+                     graph.add_edge(v,c)
+            for v in list(link_b):
+                if isinstance(v, int):
+                     graph.add_edge(v,c)
+
+            # update triangulation by removing triangles a,b,x and a,b,y (could there be problem with order?)
+            # and in all other triangles replace a and b with c
+            triangulation.remove((a,b,x))
+            triangulation.remove((a,b,y))
+            for i,j,k in triangulation:
+                if (i==a or i==b):
+                    triangulation.remove(i,j,k)
+                    triangulation.append(c,j,k)
+                if (j==a or j==b):
+                    triangulation.remove(i,j,k)
+                    triangulation.append(i,c,k)
+                if (k==a or k==b):
+                    triangulation.remove(i,j,k)
+                    triangulation.append(i,j,c)
+
+        err, edge = edges_errors_pq.popitem()
+
+    return triangulation
+
+def contract(graph, edge,points):
     """ Simulates removal of edge '(a, b)' and added new node 'c'. Does not correct the graph.
         Returns 'c',  'x' and 'y' which were in ex-triangles '(a, b, x)' and '(a, b, y)'.
     """
-    pass
+    a, b = edge
+    a_coordinate=points[a]
+    b_coordinate=points[b]
+    c_coordinate=(a_coordinate+b_coordinate)/2
+
+    points.append(c_coordinate)
+    # obtain c label -> again to enumerate or b length -> should we update triangulation and points or not?
+    c=len(points)
+    #the code will ensure that lenth of link_of_edge(graph, edge) is 2 but maybe to check again ?
+    x,y = tuple(list(link_of_edge(graph, edge)))
+
+    return c,x,y
 
 
 def initial_error(graph, triangulation, points):
@@ -101,7 +154,23 @@ def link_of_node(graph, a):
     return neigh_a.union(edges_a)
 
 
-def sort_edges(triangulation):
+def sort_edges(graph,error):
     """ Sort edges in triangulation according to deformation to graph. """
-    pass
+    #TO DO: test if it sorts ascending or descending  (error->-error)
+    error_edge_pq=SortedDict()
+    for e in graph.edges():
+        edge_error=error[e]
+        error_edge_pq[edge_error]=e
 
+    return error_edge_pq
+
+def is_safe(graph,edge):
+    """ Check if contraction of an edge preserves the topological type """
+    edge_link=link_of_edge(graph,edge)
+    edge_v1_link=link_of_node(graph,edge[0])
+    edge_v2_link = link_of_node(graph, edge[1])
+
+    if(edge_link==(edge_v1_link.intersection(edge_v2_link))):
+        return True
+
+    return False
