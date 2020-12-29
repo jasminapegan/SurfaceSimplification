@@ -44,7 +44,7 @@ def edge_contraction(graph,triangulation,points):
 
             # update triangulation by removing triangles a,b,x and a,b,y (could there be problem with order?)
             # and in all other triangles replace a and b with c
-            t1=get_triangle_order_in_triangulation((a,b,x),triangulation)
+            t1=get_triangle_order_in_triangulation((a,b,x),  triangulation)
             t2=get_triangle_order_in_triangulation((a, b, y), triangulation)
             if t1 in triangulation:
                 triangulation.remove(t1)
@@ -56,12 +56,16 @@ def edge_contraction(graph,triangulation,points):
                     triangulation.remove((i,j,k))
                     triangulation.append((c,j,k))
                 if (j==a or j==b):
-                    triangulation.remove((i,j,k))
-                    triangulation.append((i,c,k))
+                    if (i,j,k) in triangulation:
+                        triangulation.remove((i,j,k))
+                        triangulation.append((i,c,k))
                 if (k==a or k==b):
-                    triangulation.remove((i,j,k))
-                    triangulation.append((i,j,c))
+                    if (i,j,k) in triangulation:
+                        triangulation.remove((i,j,k))
+                        triangulation.append((i,j,c))
 
+            error=initial_error(graph, triangulation, points)
+            edges_errors_pq = sort_edges(graph, error)
         err, edge = edges_errors_pq.get()
 
     return triangulation,points
@@ -76,15 +80,14 @@ def contract(graph, edge,points):
     c_coordinate=(np.array(a_coordinate)+np.array(b_coordinate))/2
 
     points.append(c_coordinate)
-    # obtain c label -> again to enumerate or b length -> should we update triangulation and points or not?
     c=len(points)-1
+
     #the code will ensure that lenth of link_of_edge(graph, edge) is 2 but maybe to check again ?
     edge_links=list(link_of_edge(graph, edge))
     if (len(edge_links)==2):
         x = edge_links[0]
         y = edge_links[1]
-    else:
-        print("edge does not have two links")
+
     return c,x,y
 
 
