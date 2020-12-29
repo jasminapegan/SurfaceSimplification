@@ -41,5 +41,9 @@ def triangle_normal(a, b, c):
     return cross / np.linalg.norm(cross)
 
 
+def sorted_tuple(*lst):
+    return tuple(sorted(lst))
+
+
 def homology(triangulation):
     pass

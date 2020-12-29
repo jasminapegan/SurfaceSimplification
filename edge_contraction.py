@@ -8,7 +8,7 @@
 
     Data source: http://graphics.stanford.edu/data/3Dscanrep/
 """
-from helpers import triangle_normal
+from helpers import triangle_normal, sorted_tuple
 import numpy as np
 from queue import PriorityQueue
 
@@ -91,6 +91,67 @@ def contract(graph, edge,points):
     return c,x,y
 
 
+def contract2(graph, edge, triangulation, points):
+    """ Simulates removal of edge '(a, b)' and added new node 'c'. Does not correct the graph.
+
+        What it does:
+        - Nodes a and b are removed, c is added.
+        - All neighbors of 'a' and 'b' become neighbors of 'c'. (Remove (a,*), (b,*) and add (c,*))
+          This is: for all nodes x in Link(a,b) except a, b: add (c, x).
+        - All triangles with a and b are removed.
+          Added: for y in Link(a) U Link(b): for x in Link(c,y): triangle (c, x, y)
+
+        Returns two dicts of lists of added stuff and list of removed stuff.
+        Ex.:
+            added = {'nodes': [(1,)], 'edges': [(1,2), (1,3)], 'triangles': [(1,2,3)]}
+            removed = {'nodes': [(4,)], 'edges': [(2,4), (3,4)], 'triangles': [(2,3,4)]}
+    """
+    removed = {'nodes': [], 'edges': [], 'triangles': []}
+    added = {'nodes': [], 'edges': [], 'triangles': []}
+
+    a, b = edge
+    a_coordinate = points[a]
+    b_coordinate = points[b]
+    c_coordinate = (np.array(a_coordinate)+np.array(b_coordinate))/2
+
+    points.append(c_coordinate)
+    c = len(points) - 1
+
+    Lk_a = link_of_node(graph, a)
+    Lk_b = link_of_node(graph, b)
+    Lk_ab = link_of_edge(graph, edge)
+
+    # Nodes a and b are removed, c is added.
+    removed['nodes'].append((a,))
+    removed['nodes'].append((b,))
+    added['nodes'].append((c,))
+
+    # All neighbors of 'a' and 'b' become neighbors of 'c'. (Remove (a,*), (b,*) and add (c,*))
+    # This is: for all nodes x in Link(a,b) except a, b: add (c, x).
+    for x in Lk_ab:
+        if x not in (a, b):
+            removed['edges'].append(sorted_tuple(a, x))
+            removed['edges'].append(sorted_tuple(b, x))
+            added['edges'].append(sorted_tuple(c, x))
+
+    # All triangles with a and b are removed.
+    # Added: for x, y in Link(a) U Link(b): for x in Link(c,y): triangle (c, x, y)
+    for x in Lk_ab:
+        removed['triangles'].append(sorted_tuple(a, b, x))
+
+    neighs_of_ab = Lk_a.union(Lk_b)
+    neigh_edges = [x for x in neighs_of_ab if len(x) == 2]
+    neigh_nodes = [x for x in neighs_of_ab if len(x) == 1]
+
+    for e in neigh_edges:
+        for n in neigh_nodes:
+            t = sorted_tuple(n, *e)
+            if t in triangulation:
+                removed['triangles'].append(t)
+
+    return removed, added
+
+
 def initial_error(graph, triangulation, points):
     error = {}
 
@@ -98,11 +159,12 @@ def initial_error(graph, triangulation, points):
         error[(i,)] = 0
 
     for e in graph.edges():
-        error[e] = 0
+        error[sorted_tuple(*e)] = 0
+
+    for t in triangulation:
+        error[sorted_tuple(*t)] = 0
 
     error_triangles = [0 for _ in triangulation]
-    for t in triangulation:
-        error[tuple(t)] = 0
 
     # Qabx
     for i, triangle in enumerate(triangulation):
@@ -118,38 +180,72 @@ def initial_error(graph, triangulation, points):
                 if x < y:
 
                     # Qab
+                    if (x, y) not in error.keys():
+                        error[(x, y)] = 0
                     error[(x, y)] += error_triangles[i]
 
                     # Qa
+                    if (x,) not in error.keys():
+                        error[(x,)] = 0
                     error[(x,)] += error[(x, y)]
+
+                    if (y,) not in error.keys():
+                        error[(y,)] = 0
                     error[(y,)] += error[(x, y)]
 
-            error[(x,)] += error[triangle]
+
+            if (x,) not in error.keys():
+                error[(x,)] = 0
+            error[(x,)] += error[sorted_tuple(*triangle)]
 
     return error
 
 
-def deformation_error(graph, error, edge, points):
+def deformation_error(graph, error, edge, triangulation, points):
     """ Score that measures how deformed the graph becomes by contracting the edge. """
-    a, b = edge
+    a, b = sorted_tuple(edge)
 
     # get the new point and new edges from somewhere
-    c, x, y = contract(graph, edge, points)
+    #c, x, y = contract(graph, edge, points)
+    removed, added = contract2(graph, edge, triangulation, points)
+    c = added['points'][0]
+    print(c)
 
     # avoid calculating twice
-    if (c,) not in error.keys():
-        error[(c,)] = error[(a,)] + error[(b,)] - error[edge]
-        error[(c, x)] = error[(a, x)] + error[(b, x)] - error[(a, b, x)]
-        error[(c, y)] = error[(a, y)] + error[(b, y)] - error[(a, b, y)]
+    if c not in error.keys():
+        error[c] = error[(a,)] + error[(b,)] - error[sorted_tuple(a, b)]
 
-    return error[(a, b)]
+        x, y = link_of_edge(graph, (a, b))
+        error[sorted_tuple(c, x)] = error[sorted_tuple(a, x)] + error[sorted_tuple(b, x)] - error[sorted_tuple(a, b, x)]
+        error[sorted_tuple(c, y)] = error[sorted_tuple(a, y)] + error[sorted_tuple(b, y)] - error[sorted_tuple(a, b, y)]
+
+    return error[sorted_tuple(a, b)]
 
 
-def error_contract(error, edge):
-    """ Removes edge data from error dictionary to save space. """
-    error.pop(edge, None)
-    error.pop((edge[0],), None)
-    error.pop((edge[1],), None)
+def error_contract(error, edge, graph, triangulation, points):
+    """ Removes edge data from error dictionary to save space.
+        Also adds/removes necessary triangles and nodes.
+    """
+
+    remove, add = contract2(graph, edge, triangulation, points)
+
+    for e in add['edges']:
+        # this automatically adds error[node] and error[e]
+        deformation_error(graph, error, e, triangulation, points)
+
+    for t in add['triangles']:
+        a, b, c = t
+        u = triangle_normal(points[a], points[b], points[c])
+        error[t] = np.dot(u, np.transpose(u))
+
+    for node in remove['nodes']:
+        error.pop(node, None)
+
+    for e in remove['edges']:
+        error.pop(e, None)
+
+    for t in remove['triangles']:
+        error.pop(t, None)
 
 
 def link_of_edge(graph, edge):

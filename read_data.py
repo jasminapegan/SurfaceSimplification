@@ -1,6 +1,7 @@
 """
     Read triangulation from a .ply file.
 """
+from helpers import sorted_tuple
 
 
 def get_triangulation(file):
@@ -28,7 +29,7 @@ def get_triangulation(file):
 
             # lines of form 3, i, j, k (indices of points)
             elif len(data) == 4 and data[0] == '3':
-                triangulation.add(tuple([int(i) for i in data[1:]]))
+                triangulation.add(sorted_tuple(*[int(i) for i in data[1:]]))
 
     return points, list(triangulation)
 
