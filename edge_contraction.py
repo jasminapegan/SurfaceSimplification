@@ -23,7 +23,7 @@ def edge_contraction(graph, triangulation, points):
     while not edges_errors_pq.empty():
         err, edge = edges_errors_pq.get()
         if is_safe(graph, edge):
-            edges_errors_pq.put((deformation_error(graph, error, edge, triangulation, points), edge))
+
             removed, added = contract(graph, edge, triangulation, points)
           #  edges_errors_pq.put((deformation_error(graph, error, edge, triangulation, points), edge))
           #  error_contract(error, edge, graph, triangulation, points)
