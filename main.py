@@ -5,18 +5,16 @@
 
 """
 
-import read_data, helpers, edge_contraction
+import read_data, helpers, edge_contraction, networkx as nx
 
 # testing read_data and plotting
-in_file = "bunny/reconstruction/bun_zipper_res4.ply"
+in_file = "bunny/reconstruction/bun_zipper_res2.ply"
 points, triangulation = read_data.get_triangulation(in_file)
 
 helpers.plot(triangulation, points)
 graph = helpers.triangulation_to_graph(triangulation, points)
-triangulation,points=edge_contraction.edge_contraction(graph,triangulation,points)
+
+triangulation,points=edge_contraction.edge_contraction2(graph,triangulation,points)
 helpers.plot(triangulation, points)
-
-
-
 
 
