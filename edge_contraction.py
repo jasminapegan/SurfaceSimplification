@@ -13,7 +13,7 @@ import numpy as np
 from queue import PriorityQueue
 
 
-def edge_contraction2(graph, triangulation, points):
+def edge_contraction(graph, triangulation, points):
     """ Edge contraction algorithm.
      First calculate initial errors and sort edges according to the error in priority queue.
      While priority queue is not empty, get edge with highest priority, update graph and update triangulation.  """
@@ -23,10 +23,12 @@ def edge_contraction2(graph, triangulation, points):
     while not edges_errors_pq.empty():
         err, edge = edges_errors_pq.get()
         if is_safe(graph, edge):
-            removed, added = contract2(graph, edge, triangulation, points)
-
-            for i, j in removed.get('edges'):
-                graph.remove_edge(i, j)
+            edges_errors_pq.put((deformation_error(graph, error, edge, triangulation, points), edge))
+            removed, added = contract(graph, edge, triangulation, points)
+          #  edges_errors_pq.put((deformation_error(graph, error, edge, triangulation, points), edge))
+          #  error_contract(error, edge, graph, triangulation, points)
+            for e in removed.get('edges'):
+                graph.remove_edge(*e)
             for n in removed.get('nodes'):
                 graph.remove_node(n)
             for t in list(set(removed.get('triangles'))):
@@ -39,92 +41,9 @@ def edge_contraction2(graph, triangulation, points):
             for t in list(set(added.get('triangles'))):
                 triangulation.append(t)
 
-            error = initial_error(graph, triangulation, points)
-            edges_errors_pq = sort_edges(graph, error)
-
     return triangulation, points
 
-
-def edge_contraction(graph, triangulation, points):
-    """ Edge contraction algorithm.
-     First calculate initial errors and sort edges according to the error in priority queue.
-     While priority queue is not empty, get edge with highest priority, update graph and update triangulation.  """
-    error = initial_error(graph, triangulation, points)
-    edges_errors_pq = sort_edges(graph, error)
-
-    while not edges_errors_pq.empty():
-        err, edge = edges_errors_pq.get()
-        if is_safe(graph, edge):
-            a, b = edge
-            link_a = link_of_node(graph, a)
-            link_b = link_of_node(graph, b)
-            link_a.remove(b)
-            link_b.remove(a)
-            c, x, y = contract(graph, edge, points)
-
-            # update graph
-            # by removing nodes we remove all incident edges as well
-            graph.remove_node(a)
-            graph.remove_node(b)
-            graph.add_node(c)
-
-            for v in list(link_a):
-                if isinstance(v, int):
-                    graph.add_edge(v, c)
-            for v in list(link_b):
-                if isinstance(v, int):
-                    graph.add_edge(v, c)
-
-            # update triangulation by removing triangles a,b,x and a,b,y (could there be problem with order?)
-            # and in all other triangles replace a and b with c
-            t1 = get_triangle_order_in_triangulation((a, b, x), triangulation)
-            t2 = get_triangle_order_in_triangulation((a, b, y), triangulation)
-            if t1 in triangulation:
-                triangulation.remove(t1)
-            if t2 in triangulation:
-                triangulation.remove(t2)
-
-            for i, j, k in triangulation:
-                if i == a or i == b:
-                    triangulation.remove((i, j, k))
-                    triangulation.append((c, j, k))
-                if j == a or j == b:
-                    if (i, j, k) in triangulation:
-                        triangulation.remove((i, j, k))
-                        triangulation.append((i, c, k))
-                if k == a or k == b:
-                    if (i, j, k) in triangulation:
-                        triangulation.remove((i, j, k))
-                        triangulation.append((i, j, c))
-            # recalculate error and update graph
-            error = initial_error(graph, triangulation, points)
-            edges_errors_pq = sort_edges(graph, error)
-
-    return triangulation, points
-
-
-def contract(graph, edge, points):
-    """ Simulates removal of edge '(a, b)' and added new node 'c'. Does not correct the graph.
-        Returns 'c',  'x' and 'y' which were in ex-triangles '(a, b, x)' and '(a, b, y)'.
-    """
-    a, b = edge
-    a_coordinate = points[a]
-    b_coordinate = points[b]
-    c_coordinate = (np.array(a_coordinate) + np.array(b_coordinate)) / 2
-
-    points.append(c_coordinate)
-    c = len(points) - 1
-
-    # the code will ensure that lenth of link_of_edge(graph, edge) is 2 but maybe to check again ?
-    edge_links = list(link_of_edge(graph, edge))
-    if (len(edge_links) == 2):
-        x = edge_links[0]
-        y = edge_links[1]
-
-    return c, x, y
-
-
-def contract2(graph, edge, triangulation, points):
+def contract(graph, edge, triangulation, points):
     """ Simulates removal of edge '(a, b)' and added new node 'c'. Does not correct the graph.
 
         What it does:
@@ -161,7 +80,6 @@ def contract2(graph, edge, triangulation, points):
 
     # All neighbors of 'a' and 'b' become neighbors of 'c'. (Remove (a,*), (b,*) and add (c,*))
     # This is: for all nodes x in Link(a,b) except a, b: add (c, x)
-    # THIS IS MISTAKE- this will only delete ax,bx,ay,by bcs link of ab are just nodes creating triangles with a,b
     for x in Lk_ab:
         removed['edges'].append(sorted_tuple(a, x))
         removed['edges'].append(sorted_tuple(b, x))
@@ -188,28 +106,16 @@ def contract2(graph, edge, triangulation, points):
         # We also need to remove from triangulation all triangles that had a or b as node
         # and to add instead of that all tringles having other two coordinates same as before plus c instead of a or b
         # This commented code below is instead of part from line 202 - to remove and append proper triangles to triangulation
-        for i,j,k in triangulation:
-                   if (i == a and j != b and k != b) or (i == b and j != a and k != a):
-                       removed['triangles'].append(sorted_tuple(i,j,k))
-                       added['triangles'].append(sorted_tuple(c,j,k))
-                   if (i != a and j == b and k != a) or (i != b and j == a and k != b):
-                       removed['triangles'].append(sorted_tuple(i,j,k))
-                       added['triangles'].append(sorted_tuple(i,c,k))
-                   if (i != b and j != b and k == a) or (i != a and j != a and k == b):
-                       removed['triangles'].append(sorted_tuple(i, j, k))
-                       added['triangles'].append(sorted_tuple(i, j, c))
-
-        # Here len(x) didn't work since if x is just int then len(x) doesn't work
-#        neighs_of_ab = Lk_a.union(Lk_b)
-#        neigh_edges = [x for x in neighs_of_ab if isinstance(x, tuple)]
-#        neigh_nodes = [x for x in neighs_of_ab if isinstance(x, int)]#
-
-#        for e in neigh_edges:
-#            for n in neigh_nodes:
-#                t = sorted_tuple(n, *e)
-#                if t in triangulation:
-#                   removed['triangles'].append(t)
-    #                  added['triangles'].append(---)
+    for i,j,k in triangulation:
+        if (i == a and j != b and k != b) or (i == b and j != a and k != a):
+              removed['triangles'].append(sorted_tuple(i,j,k))
+              added['triangles'].append(sorted_tuple(c,j,k))
+        if (i != a and j == b and k != a) or (i != b and j == a and k != b):
+              removed['triangles'].append(sorted_tuple(i,j,k))
+              added['triangles'].append(sorted_tuple(i,c,k))
+        if (i != b and j != b and k == a) or (i != a and j != a and k == b):
+              removed['triangles'].append(sorted_tuple(i, j, k))
+              added['triangles'].append(sorted_tuple(i, j, c))
 
     return removed, added
 
@@ -264,13 +170,12 @@ def initial_error(graph, triangulation, points):
 
 def deformation_error(graph, error, edge, triangulation, points):
     """ Score that measures how deformed the graph becomes by contracting the edge. """
-    a, b = sorted_tuple(edge)
+    a, b = sorted_tuple(*edge)
 
     # get the new point and new edges from somewhere
     # c, x, y = contract(graph, edge, points)
-    removed, added = contract2(graph, edge, triangulation, points)
+    removed, added = contract(graph, edge, triangulation, points)
     c = added['points'][0]
-    print(c)
 
     # avoid calculating twice
     if c not in error.keys():
@@ -288,7 +193,7 @@ def error_contract(error, edge, graph, triangulation, points):
         Also adds/removes necessary triangles and nodes.
     """
 
-    remove, add = contract2(graph, edge, triangulation, points)
+    remove, add = contract(graph, edge, triangulation, points)
 
     for e in add['edges']:
         # this automatically adds error[node] and error[e]
@@ -339,7 +244,7 @@ def is_safe(graph, edge):
         edge_v1_link = link_of_node(graph, edge[0])
         edge_v2_link = link_of_node(graph, edge[1])
 
-        if (edge_link == (edge_v1_link.intersection(edge_v2_link)) and len(list(edge_link)) == 2):
+        if edge_link == (edge_v1_link.intersection(edge_v2_link)) and len(list(edge_link)) == 2:
             return True
 
     return False
