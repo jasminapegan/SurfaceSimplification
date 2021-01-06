@@ -8,7 +8,7 @@
 
     Data source: http://graphics.stanford.edu/data/3Dscanrep/
 """
-from helpers import triangle_normal, sorted_tuple
+from helpers import triangle_normal, sorted_tuple, triangle_normal2, triangle_error
 import numpy as np
 from queue import PriorityQueue
 
@@ -38,6 +38,7 @@ def edge_contraction(graph, triangulation, points):
                 graph.add_node(n)
             for e in added.get('edges'):
                 graph.add_edge(*e)
+                #edges_errors_pq.put((deformation_error(graph, error, e, triangulation, points), e))
             for t in list(set(added.get('triangles'))):
                 triangulation.append(t)
 
@@ -139,6 +140,9 @@ def initial_error(graph, triangulation, points):
         a, b, c = triangle
 
         u = triangle_normal(points[a], points[b], points[c])
+        # u = triangle_normal2(points[a], points[b], points[c])
+        #triangle_err=triangle_error(points[a], points[b], points[c])
+        #print(triangle_err)
         error_triangles[i] = np.dot(u, np.transpose(u))
         error[triangle] = triangle_normal(points[a], points[b], points[c])
 
@@ -202,6 +206,7 @@ def error_contract(error, edge, graph, triangulation, points):
     for t in add['triangles']:
         a, b, c = t
         u = triangle_normal(points[a], points[b], points[c])
+        print(u)
         error[t] = np.dot(u, np.transpose(u))
 
     for node in remove['nodes']:

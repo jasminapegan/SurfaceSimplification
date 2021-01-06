@@ -40,6 +40,17 @@ def triangle_normal(a, b, c):
     cross = np.cross(ab, ac)
     return cross / np.linalg.norm(cross)
 
+def triangle_normal2(a, b, c):
+    ab = np.array(b) - np.array(a)
+    ac = np.array(c) - np.array(a)
+    cross = np.cross(ab, ac)
+    cross = cross / np.linalg.norm(cross)
+    d = -cross.dot(a)
+    return np.append(cross,d)
+
+def triangle_error(a,b,c):
+    u = triangle_normal2(a,b,c)
+    return np.outer(u,u)
 
 def sorted_tuple(*lst):
     return tuple(sorted(lst))
