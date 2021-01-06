@@ -17,7 +17,7 @@ def edge_contraction(graph, triangulation, points):
     """ Edge contraction algorithm.
      First calculate initial errors and sort edges according to the error in priority queue.
      While priority queue is not empty, get edge with highest priority, update graph and update triangulation.  """
-    error = initial_error(graph, triangulation, points)
+    error = initial_error_2(graph, triangulation, points)
     edges_errors_pq = sort_edges(graph, error)
 
     while not edges_errors_pq.empty():
@@ -172,6 +172,52 @@ def initial_error(graph, triangulation, points):
     return error
 
 
+def initial_error_2(graph, triangulation, points):
+    error = {}
+
+    for i in graph.nodes():
+        error[(i,)] = np.array([[0 for _ in range(4)] for _ in range(4)])
+
+    for e in graph.edges():
+        error[sorted_tuple(*e)] = np.array([[0 for _ in range(4)] for _ in range(4)])
+
+    for t in triangulation:
+        error[sorted_tuple(*t)] = np.array([[0 for _ in range(4)] for _ in range(4)])
+
+    # Qabx
+    for i, triangle in enumerate(triangulation):
+        a, b, c = triangle
+
+        #u = triangle_normal(points[a], points[b], points[c])
+        u = triangle_normal2(points[a], points[b], points[c])
+        error[sorted_tuple(*triangle)] = np.dot(u, np.transpose(u))
+        #error[triangle] = triangle_normal(points[a], points[b], points[c])
+
+        for x in (a, b, c):
+            for y in (a, b, c):
+                # we visit each pair once (x < y is unique pair)
+                if x < y:
+
+                    # Qab
+                    if (x, y) not in error.keys():
+                        error[(x, y)] = np.array([[0 for _ in range(4)] for _ in range(4)])
+                    error[(x, y)] = np.add(error[(x, y)], error[sorted_tuple(*triangle)])
+
+                    # Qa
+                    if (x,) not in error.keys():
+                        error[(x,)] = np.array([[0 for _ in range(4)] for _ in range(4)])
+                    error[(x,)] = np.add(error[(x,)], error[(x, y)])
+
+                    if (y,) not in error.keys():
+                        error[(y,)] = np.array([[0 for _ in range(4)] for _ in range(4)])
+                    error[(y,)] = np.add(error[(y,)], error[(x, y)])
+
+            if (x,) not in error.keys():
+                error[(x,)] = np.array([[0 for _ in range(4)] for _ in range(4)])
+            error[(x,)] = np.add(error[(x,)], error[sorted_tuple(*triangle)])
+
+    return error
+
 def deformation_error(graph, error, edge, triangulation, points):
     """ Score that measures how deformed the graph becomes by contracting the edge. """
     a, b = sorted_tuple(*edge)
@@ -188,6 +234,26 @@ def deformation_error(graph, error, edge, triangulation, points):
         x, y = link_of_edge(graph, (a, b))
         error[sorted_tuple(c, x)] = error[sorted_tuple(a, x)] + error[sorted_tuple(b, x)] - error[sorted_tuple(a, b, x)]
         error[sorted_tuple(c, y)] = error[sorted_tuple(a, y)] + error[sorted_tuple(b, y)] - error[sorted_tuple(a, b, y)]
+
+    return error[sorted_tuple(a, b)]
+
+
+def deformation_error_2(graph, error, edge, triangulation, points):
+    """ Score that measures how deformed the graph becomes by contracting the edge. """
+    a, b = sorted_tuple(*edge)
+
+    # get the new point and new edges from somewhere
+    # c, x, y = contract(graph, edge, points)
+    removed, added = contract(graph, edge, triangulation, points)
+    c = added['points'][0]
+
+    # avoid calculating twice
+    if c not in error.keys():
+        error[c] = np.diff(np.add(error[(a,)], error[(b,)]), error[sorted_tuple(a, b)])
+
+        x, y = link_of_edge(graph, (a, b))
+        error[sorted_tuple(c, x)] = np.diff(np.add(error[sorted_tuple(a, x)], error[sorted_tuple(b, x)]) , error[sorted_tuple(a, b, x)])
+        error[sorted_tuple(c, y)] = np.diff(np.add(error[sorted_tuple(a, y)], error[sorted_tuple(b, y)]), error[sorted_tuple(a, b, y)])
 
     return error[sorted_tuple(a, b)]
 
@@ -236,6 +302,20 @@ def sort_edges(graph, error):
     error_edge_pq = PriorityQueue()
     for e in graph.edges():
         edge_error = error[e]
+        error_edge_pq.put((edge_error, e))
+
+    return error_edge_pq
+
+
+def sort_edges_2(graph, error):
+    """ Sort edges in triangulation according to deformation to graph. """
+    error_edge_pq = PriorityQueue()
+    for e in graph.edges():
+        edge_error = error[e]
+
+        # find c
+        c = solve_system(edge_error)
+
         error_edge_pq.put((edge_error, e))
 
     return error_edge_pq

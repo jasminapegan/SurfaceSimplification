@@ -40,6 +40,7 @@ def triangle_normal(a, b, c):
     cross = np.cross(ab, ac)
     return cross / np.linalg.norm(cross)
 
+
 def triangle_normal2(a, b, c):
     ab = np.array(b) - np.array(a)
     ac = np.array(c) - np.array(a)
@@ -48,9 +49,21 @@ def triangle_normal2(a, b, c):
     d = -cross.dot(a)
     return np.append(cross,d)
 
+
 def triangle_error(a,b,c):
     u = triangle_normal2(a,b,c)
     return np.outer(u,u)
+
+
+"""def derivative(Q, i, x):
+    QTx = np.matmul(np.transpose(Q[i]), x)
+    xTQ = np.matmul(np.transpose(x), Q[i])
+    return np.add(QTx, xTQ)"""
+
+def solve_system(Q):
+    """ This needs to be checked, no idea if it's correct """
+    return np.linalg.solve(Q, 0)
+
 
 def sorted_tuple(*lst):
     return tuple(sorted(lst))
