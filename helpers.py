@@ -49,6 +49,17 @@ def triangle_normal2(a, b, c):
     d = -cross.dot(a)
     return np.append(cross,d)
 
+def c_coordinate(e,error,points):
+    a, b = e
+    edge_error = error[(a,)] + error[(b,)]
+    try:
+        c = np.linalg.solve(edge_error[:-1, :-1], -edge_error[:-1, -1])
+    except np.linalg.LinAlgError:
+        a, b = e
+        a_coordinate = points[a]
+        b_coordinate = points[b]
+        c = (np.array(a_coordinate) + np.array(b_coordinate)) / 2
+    return c,edge_error
 
 def triangle_error(a,b,c):
     u = triangle_normal2(a,b,c)
