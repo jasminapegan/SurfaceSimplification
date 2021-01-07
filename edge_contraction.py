@@ -41,6 +41,7 @@ def edge_contraction(graph, triangulation, points):
             for t in list(set(added.get('triangles'))):
                 triangulation.append(t)
 
+
             for e in added.get('edges'):
                 c, edge_error = c_coordinate(e, error, points)
                 edge_coordinate.update({e: c})
@@ -244,20 +245,22 @@ def deformation_error_contract(graph, error, edge, triangulation, points):
     removed, added = contract(graph, edge, triangulation, points)
 
     # error of new point -- there is only one added point when contracting an edge
-    c = added['points']
+    c = added['nodes']
     if len(c) != 1:
         raise Exception("Contraction should result in only one point.")
     c = c[0]
-    error[c] = np.diff(np.add(error[(a,)], error[(b,)]), error[sorted_tuple(a, b)])
+    error[(c,)] = np.subtract(np.add(error[(a,)], error[(b,)]), error[sorted_tuple(a, b)])
 
     # error of new edges by formula -- we need to calculate this before removing edges and triangles
     x, y = link_of_edge(graph, (a, b))
-    error[sorted_tuple(c, x)] = np.diff(np.add(error[sorted_tuple(a, x)], error[sorted_tuple(b, x)]), error[sorted_tuple(a, b, x)])
-    error[sorted_tuple(c, y)] = np.diff(np.add(error[sorted_tuple(a, y)], error[sorted_tuple(b, y)]), error[sorted_tuple(a, b, y)])
+    error[sorted_tuple(c, x)] = np.subtract(np.add(error[sorted_tuple(a, x)], error[sorted_tuple(b, x)]), error[sorted_tuple(a, b, x)])
+    error[sorted_tuple(c, y)] = np.subtract(np.add(error[sorted_tuple(a, y)], error[sorted_tuple(b, y)]), error[sorted_tuple(a, b, y)])
 
     # error of new triangles -- the easiest to calculate, doesn't need other errors
-    for t in added["triangles"]:
-        error[t] = triangle_normal2(*t)
+    for triangle in added["triangles"]:
+        a, b, c = triangle
+        u = triangle_normal2(points[a], points[b], points[c])
+        error[sorted_tuple(*triangle)] = np.outer(u, np.transpose(u))
 
     # remove old points
     for n in removed["nodes"]:
@@ -295,7 +298,7 @@ def deformation_error_edge(graph, error, edge, triangulation, points):
     if len(c) != 1:
         raise Exception("Contraction should result in only one point.")
     c = c[0]
-    newErrs[c] = np.diff(np.add(error[(a,)], error[(b,)]), error[sorted_tuple(a, b)])
+    newErrs[(c,)] = np.diff(np.add(error[(a,)], error[(b,)]), error[sorted_tuple(a, b)])
 
     # error of new edges by formula -- we need to calculate this before removing edges and triangles
     x, y = link_of_edge(graph, (a, b))
