@@ -8,7 +8,7 @@
 
     Data source: http://graphics.stanford.edu/data/3Dscanrep/
 """
-from helpers import triangle_normal, sorted_tuple, triangle_normal2, triangle_error
+from helpers import triangle_normal, sorted_tuple, triangle_normal2, triangle_error,c_coordinate
 import numpy as np
 from queue import PriorityQueue
 
@@ -18,12 +18,12 @@ def edge_contraction(graph, triangulation, points):
      First calculate initial errors and sort edges according to the error in priority queue.
      While priority queue is not empty, get edge with highest priority, update graph and update triangulation.  """
     error = initial_error_2(graph, triangulation, points)
-    edges_errors_pq = sort_edges(graph, error)
+    edges_errors_pq, edge_coordinate = sort_edges(graph, error,points)
 
     while not edges_errors_pq.empty():
         err, edge = edges_errors_pq.get()
         if is_safe(graph, edge):
-
+            points.append(edge_coordinate[edge])
             removed, added = contract(graph, edge, triangulation, points)
           #  edges_errors_pq.put((deformation_error(graph, error, edge, triangulation, points), edge))
           #  error_contract(error, edge, graph, triangulation, points)
@@ -38,10 +38,8 @@ def edge_contraction(graph, triangulation, points):
                 graph.add_node(n)
             for e in added.get('edges'):
                 graph.add_edge(*e)
-                #edges_errors_pq.put((deformation_error(graph, error, e, triangulation, points), e))
             for t in list(set(added.get('triangles'))):
                 triangulation.append(t)
-
     return triangulation, points
 
 def contract(graph, edge, triangulation, points):
@@ -63,11 +61,6 @@ def contract(graph, edge, triangulation, points):
     added = {'nodes': [], 'edges': [], 'triangles': []}
 
     a, b = edge
-    a_coordinate = points[a]
-    b_coordinate = points[b]
-    c_coordinate = (np.array(a_coordinate) + np.array(b_coordinate)) / 2
-
-    points.append(c_coordinate)
     c = len(points) - 1
 
     Lk_a = link_of_node(graph, a)
@@ -139,11 +132,11 @@ def initial_error(graph, triangulation, points):
     for i, triangle in enumerate(triangulation):
         a, b, c = triangle
 
-        u = triangle_normal(points[a], points[b], points[c])
-        # u = triangle_normal2(points[a], points[b], points[c])
+       # u = triangle_normal(points[a], points[b], points[c])
+        u = triangle_normal2(points[a], points[b], points[c])
         #triangle_err=triangle_error(points[a], points[b], points[c])
         #print(triangle_err)
-        error_triangles[i] = np.dot(u, np.transpose(u))
+        error_triangles[i] = np.outer(u, u)
         error[triangle] = triangle_normal(points[a], points[b], points[c])
 
         for x in (a, b, c):
@@ -187,11 +180,8 @@ def initial_error_2(graph, triangulation, points):
     # Qabx
     for i, triangle in enumerate(triangulation):
         a, b, c = triangle
-
-        #u = triangle_normal(points[a], points[b], points[c])
         u = triangle_normal2(points[a], points[b], points[c])
-        error[sorted_tuple(*triangle)] = np.dot(u, np.transpose(u))
-        #error[triangle] = triangle_normal(points[a], points[b], points[c])
+        error[sorted_tuple(*triangle)] = np.outer(u, np.transpose(u))
 
         for x in (a, b, c):
             for y in (a, b, c):
@@ -296,29 +286,19 @@ def link_of_node(graph, a):
     edges_a = set(graph.edges(a))
     return neigh_a.union(edges_a)
 
-
-def sort_edges(graph, error):
+def sort_edges(graph, error,points):
     """ Sort edges in triangulation according to deformation to graph. """
     error_edge_pq = PriorityQueue()
+    edge_c_dict=dict()
+
     for e in graph.edges():
-        edge_error = error[e]
-        error_edge_pq.put((edge_error, e))
+        c , edge_error=c_coordinate(e,error,points)
+        edge_c_dict.update({e:c})
+        c_error = np.append(c,1)
+        pq_error = np.dot(np.dot(c_error,edge_error),np.transpose(c_error))
+        error_edge_pq.put((pq_error, e))
 
-    return error_edge_pq
-
-
-def sort_edges_2(graph, error):
-    """ Sort edges in triangulation according to deformation to graph. """
-    error_edge_pq = PriorityQueue()
-    for e in graph.edges():
-        edge_error = error[e]
-
-        # find c
-        c = solve_system(edge_error)
-
-        error_edge_pq.put((edge_error, e))
-
-    return error_edge_pq
+    return error_edge_pq, edge_c_dict
 
 
 def is_safe(graph, edge):
