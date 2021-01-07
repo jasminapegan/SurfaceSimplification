@@ -25,8 +25,8 @@ def edge_contraction(graph, triangulation, points):
         if is_safe(graph, edge):
             points.append(edge_coordinate[edge])
             removed, added = contract(graph, edge, triangulation, points)
-          #  edges_errors_pq.put((deformation_error(graph, error, edge, triangulation, points), edge))
-          #  error_contract(error, edge, graph, triangulation, points)
+            error=deformation_error_contract(graph, error,edge,triangulation,points)
+
             for e in removed.get('edges'):
                 graph.remove_edge(*e)
             for n in removed.get('nodes'):
@@ -40,6 +40,13 @@ def edge_contraction(graph, triangulation, points):
                 graph.add_edge(*e)
             for t in list(set(added.get('triangles'))):
                 triangulation.append(t)
+
+            for e in added.get('edges'):
+                c, edge_error = c_coordinate(e, error, points)
+                edge_coordinate.update({e: c})
+                c_error = np.append(c, 1)
+                pq_error = np.dot(np.dot(c_error, edge_error), np.transpose(c_error))
+                edges_errors_pq.put((pq_error, e))
     return triangulation, points
 
 def contract(graph, edge, triangulation, points):
@@ -272,7 +279,7 @@ def deformation_error_contract(graph, error, edge, triangulation, points):
                 if x in e and y in e or x in e and z in e or y in e and z in e:
                     error[e] = np.add(error[e], error[sorted_tuple(a, b, c)])
 
-    return error[sorted_tuple(a, b)]
+    return error
 
 
 def deformation_error_edge(graph, error, edge, triangulation, points):
