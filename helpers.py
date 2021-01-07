@@ -60,6 +60,7 @@ def triangle_error(a,b,c):
     xTQ = np.matmul(np.transpose(x), Q[i])
     return np.add(QTx, xTQ)"""
 
+
 def solve_system(Q):
     """ This needs to be checked, no idea if it's correct """
     return np.linalg.solve(Q, 0)
