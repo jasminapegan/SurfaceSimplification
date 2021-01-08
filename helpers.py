@@ -24,8 +24,6 @@ def triangulation_to_graph(triangulation, points):
     # nodes are indices of points
     for i, point in enumerate(points):
         graph.add_node(i)
-        # add also coordinate data
-        #graph.nodes[i]['pos'] = point
 
     # add the links in triangles
     for a, b, c in triangulation:
@@ -61,20 +59,10 @@ def c_coordinate(e,error,points):
         c = (np.array(a_coordinate) + np.array(b_coordinate)) / 2
     return c,edge_error
 
-def triangle_error(a,b,c):
-    u = triangle_normal2(a,b,c)
-    return np.outer(u,u)
 
-
-"""def derivative(Q, i, x):
-    QTx = np.matmul(np.transpose(Q[i]), x)
-    xTQ = np.matmul(np.transpose(x), Q[i])
-    return np.add(QTx, xTQ)"""
-
-
-def solve_system(Q):
-    """ This needs to be checked, no idea if it's correct """
-    return np.linalg.solve(Q, 0)
+def error_triangle(a, b, c, points):
+    u = triangle_normal2(points[a], points[b], points[c])
+    return np.outer(u, np.transpose(u))
 
 
 def sorted_tuple(*lst):

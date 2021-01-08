@@ -8,6 +8,7 @@
 import read_data, helpers, edge_contraction, networkx as nx
 
 # testing read_data and plotting
+#in_file = "bunny/reconstruction/test.ply"
 in_file = "bunny/reconstruction/bun_zipper_res4.ply"
 points, triangulation = read_data.get_triangulation(in_file)
 print(len(triangulation))
