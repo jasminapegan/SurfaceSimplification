@@ -70,4 +70,8 @@ def sorted_tuple(*lst):
 
 
 def homology(triangulation):
-    pass
+    # build a complex from triangulation -- our simplices are triangles
+    simplexTree = gudhi.simplex_tree.SimplexTree()
+    for t in triangulation:
+        simplexTree.insert(t)
+    return simplexTree.persistence()
