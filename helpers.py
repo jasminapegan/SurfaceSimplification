@@ -69,9 +69,36 @@ def sorted_tuple(*lst):
     return tuple(sorted(lst))
 
 
-def homology(triangulation):
+def homology(triangulation, points):
     # build a complex from triangulation -- our simplices are triangles
     simplexTree = gudhi.simplex_tree.SimplexTree()
-    for t in triangulation:
-        simplexTree.insert(t)
-    return simplexTree.persistence()
+    for x, y, z in triangulation:
+        #simplexTree.insert([points[x], points[y], points[z]])
+        simplexTree.insert([x, y, z])
+
+    print('num_simplices=' + repr(simplexTree.num_simplices()))
+
+    persistence = simplexTree.persistence()
+    # plot to see if points are fine
+    plot_simplex_tree(simplexTree, points)
+    # append something different to other points else plot gives error
+    persistence.append((-1, (0, 2)))
+
+    gudhi.plot_persistence_diagram(persistence)
+    plt.show()
+
+    return persistence
+
+
+def plot_simplex_tree(sx_tree, points):
+    x, y, z = [], [], []
+    for ii, zi in sx_tree.get_filtration():
+        for i in ii:
+            x.append(points[i][0])
+            y.append(points[i][1])
+            z.append(points[i][2])
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(x, y, z, c=z, cmap='viridis')
+    plt.show()
