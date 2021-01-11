@@ -79,13 +79,16 @@ def homology(triangulation, points):
     print('num_simplices=' + repr(simplexTree.num_simplices()))
 
     persistence = simplexTree.persistence()
+
+    """
     # plot to see if points are fine
     plot_simplex_tree(simplexTree, points)
+    
     # append something different to other points else plot gives error
     persistence.append((-1, (0, 2)))
 
     gudhi.plot_persistence_diagram(persistence)
-    plt.show()
+    plt.show()"""
 
     return persistence
 

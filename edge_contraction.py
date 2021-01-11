@@ -34,7 +34,8 @@ def edge_contraction(graph, triangulation, points):
             for t in list(set(removed.get('triangles'))):
                 if t == (505, 513, 626):
                     print("removed")
-                triangulation.remove(t)
+                if t in triangulation:
+                    triangulation.remove(t)
 
             for n in added.get('nodes'):
                 graph.add_node(n)
