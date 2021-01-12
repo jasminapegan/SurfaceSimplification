@@ -32,9 +32,8 @@ def edge_contraction(graph, triangulation, points):
             for n in removed.get('nodes'):
                 graph.remove_node(n)
             for t in list(set(removed.get('triangles'))):
-                if t == (505, 513, 626):
-                    print("removed")
-                #if t in triangulation:
+                if t not in triangulation:
+                    return triangulation, points
                 triangulation.remove(t)
 
             for n in added.get('nodes'):
@@ -42,8 +41,6 @@ def edge_contraction(graph, triangulation, points):
             for e in added.get('edges'):
                 graph.add_edge(*e)
             for t in list(set(added.get('triangles'))):
-                if t == (505, 513, 626):
-                    print("added")
                 triangulation.append(t)
 
             quadrics_contract_after(error, edge, triangulation, added['edges'])
@@ -130,7 +127,6 @@ def contract(graph, edge, triangulation, points):
     for t in triangulation:
         difference = set(t).difference({a, b})
         if len(difference) == 2:
-            print(t, a, b)
             removed['triangles'].append(sorted_tuple(*t))
             added['triangles'].append(sorted_tuple(*difference, c))
 
@@ -165,13 +161,13 @@ def initial_quadrics(graph, triangulation, points):
                     quadrics[sorted_tuple(x, y)] = np.add(quadrics[sorted_tuple(x, y)], quadrics[sorted_tuple(*triangle)])
 
                     # Qa
-                    if (x,) not in quadrics.keys():
-                        quadrics[(x,)] = np.array([[0 for _ in range(4)] for _ in range(4)])
-                    quadrics[(x,)] = np.add(quadrics[(x,)], quadrics[sorted_tuple(x, y)])
+                    #if (x,) not in quadrics.keys():
+                    #    quadrics[(x,)] = np.array([[0 for _ in range(4)] for _ in range(4)])
+                    #quadrics[(x,)] = np.add(quadrics[(x,)], quadrics[sorted_tuple(x, y)])
 
-                    if (y,) not in quadrics.keys():
-                        quadrics[(y,)] = np.array([[0 for _ in range(4)] for _ in range(4)])
-                    quadrics[(y,)] = np.add(quadrics[(y,)], quadrics[sorted_tuple(x, y)])
+                    #if (y,) not in quadrics.keys():
+                    #    quadrics[(y,)] = np.array([[0 for _ in range(4)] for _ in range(4)])
+                    #quadrics[(y,)] = np.add(quadrics[(y,)], quadrics[sorted_tuple(x, y)])
 
             if (x,) not in quadrics.keys():
                 quadrics[(x,)] = np.array([[0 for _ in range(4)] for _ in range(4)])
@@ -195,6 +191,7 @@ def quadrics_contract_before(graph, quadrics, edge, points, removed, added):
     x, y = link_of_edge(graph, (a, b))
     t1, t2 = sorted_tuple(a, b, x), sorted_tuple(a, b, y)
     if t1 not in quadrics.keys():
+        return
         quadrics[t1] = error_triangle(*t1, points)
     if t2 not in quadrics.keys():
         quadrics[t2] = error_triangle(*t2, points)
